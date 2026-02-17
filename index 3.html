@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mapa Alpina - Visualizador Interactivo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            /* Colores Alpina */
+            --base: #FFFFFF;
+            --base-text: #000000;
+            --base-border: #5E5E5E;
+            --comite: #1B1464;
+            --planeacion: #FF0000;
+            --abastecimiento: #0000FF;
+            --manufactura: #8CC63F;
+            --operacion: #F18224;
+            --distribucion: #FFD500;
+            --comercial: #93278F;
+            --mercadeo: #00A99D;
+            --innovacion: #C9005D;
+            --transformacion: #C7B299;
+            --finanzas: #FFAEB4;
+            --talento: #29ABE2;
+            --servicios: #5E5E5E;
+            --mostrar-todo: #F18224;
+            
+            /* Sistema */
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --shadow-active: 0 4px 20px rgba(0,0,0,0.2);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef3 100%);
+            overflow: hidden;
+        }
+        
+        /* Header con Scroll Horizontal */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        
+        .buttons-container {
+            display: flex;
+            gap: 10px;
+            padding: 12px 16px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,0,0,0.2) transparent;
+        }
+        
+        /* Estilo de scrollbar para Chrome/Safari */
+        .buttons-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .buttons-container::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 10px;
+        }
+        
+        .buttons-container::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        
+        .buttons-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.3);
+        }
+        
+        /* Indicadores de scroll */
+        .scroll-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #333;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .scroll-indicator.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .scroll-indicator.left {
+            left: 8px;
+        }
+        
+        .scroll-indicator.right {
+            right: 8px;
+        }
+        
+        /* Botones Premium - Estado Base */
+        .btn {
+            position: relative;
+            padding: 10px 20px;
+            border: 2px solid;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            outline: none;
+            user-select: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            white-space: nowrap;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        
+        /* Efecto ripple */
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.1;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+        
+        .btn:hover::before {
+            width: 120px;
+            height: 120px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-active);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Checkmark cuando está activo */
+        .btn.active::after {
+            content: '✓';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+        
+        /* ============================================
+           COLORES INVERTIDOS POR BOTÓN
+           ============================================ */
+        
+        /* Botón Base (Limpiar Todo) */
+        .btn-base {
+            background: var(--base);
+            color: var(--base-text);
+            border-color: var(--base-border);
+        }
+        .btn-base.active {
+            background: var(--base-border);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-base.active::after {
+            color: var(--base);
+        }
+        
+        /* Comité Directivo */
+        .btn-comite {
+            background: var(--base);
+            color: var(--comite);
+            border-color: var(--comite);
+        }
+        .btn-comite.active {
+            background: var(--comite);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-comite.active::after {
+            color: var(--base);
+        }
+        
+        /* Planeación */
+        .btn-planeacion {
+            background: var(--base);
+            color: var(--planeacion);
+            border-color: var(--planeacion);
+        }
+        .btn-planeacion.active {
+            background: var(--planeacion);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-planeacion.active::after {
+            color: var(--base);
+        }
+        
+        /* Abastecimiento */
+        .btn-abastecimiento {
+            background: var(--base);
+            color: var(--abastecimiento);
+            border-color: var(--abastecimiento);
+        }
+        .btn-abastecimiento.active {
+            background: var(--abastecimiento);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-abastecimiento.active::after {
+            color: var(--base);
+        }
+        
+        /* Manufactura */
+        .btn-manufactura {
+            background: var(--base);
+            color: var(--manufactura);
+            border-color: var(--manufactura);
+        }
+        .btn-manufactura.active {
+            background: var(--manufactura);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-manufactura.active::after {
+            color: var(--base);
+        }
+        
+        /* Operación */
+        .btn-operacion {
+            background: var(--base);
+            color: var(--operacion);
+            border-color: var(--operacion);
+        }
+        .btn-operacion.active {
+            background: var(--operacion);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-operacion.active::after {
+            color: var(--base);
+        }
+        
+        /* Distribución (Color claro - texto oscuro cuando activo) */
+        .btn-distribucion {
+            background: var(--base);
+            color: var(--distribucion);
+            border-color: var(--distribucion);
+        }
+        .btn-distribucion.active {
+            background: var(--distribucion);
+            color: #333;
+            border-color: #333;
+        }
+        .btn-distribucion.active::after {
+            color: #333;
+        }
+        
+        /* Comercial */
+        .btn-comercial {
+            background: var(--base);
+            color: var(--comercial);
+            border-color: var(--comercial);
+        }
+        .btn-comercial.active {
+            background: var(--comercial);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-comercial.active::after {
+            color: var(--base);
+        }
+        
+        /* Mercadeo */
+        .btn-mercadeo {
+            background: var(--base);
+            color: var(--mercadeo);
+            border-color: var(--mercadeo);
+        }
+        .btn-mercadeo.active {
+            background: var(--mercadeo);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-mercadeo.active::after {
+            color: var(--base);
+        }
+        
+        /* Innovación */
+        .btn-innovacion {
+            background: var(--base);
+            color: var(--innovacion);
+            border-color: var(--innovacion);
+        }
+        .btn-innovacion.active {
+            background: var(--innovacion);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-innovacion.active::after {
+            color: var(--base);
+        }
+        
+        /* Transformación (Color claro - texto oscuro cuando activo) */
+        .btn-transformacion {
+            background: var(--base);
+            color: var(--transformacion);
+            border-color: var(--transformacion);
+        }
+        .btn-transformacion.active {
+            background: var(--transformacion);
+            color: #333;
+            border-color: #333;
+        }
+        .btn-transformacion.active::after {
+            color: #333;
+        }
+        
+        /* Finanzas (Color claro - texto oscuro cuando activo) */
+        .btn-finanzas {
+            background: var(--base);
+            color: var(--finanzas);
+            border-color: var(--finanzas);
+        }
+        .btn-finanzas.active {
+            background: var(--finanzas);
+            color: #333;
+            border-color: #333;
+        }
+        .btn-finanzas.active::after {
+            color: #333;
+        }
+        
+        /* Talento */
+        .btn-talento {
+            background: var(--base);
+            color: var(--talento);
+            border-color: var(--talento);
+        }
+        .btn-talento.active {
+            background: var(--talento);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-talento.active::after {
+            color: var(--base);
+        }
+        
+        /* Servicios Corporativos */
+        .btn-servicios {
+            background: var(--base);
+            color: var(--servicios);
+            border-color: var(--servicios);
+        }
+        .btn-servicios.active {
+            background: var(--servicios);
+            color: var(--base);
+            border-color: var(--base);
+        }
+        .btn-servicios.active::after {
+            color: var(--base);
+        }
+        
+        /* Mostrar Todo */
+        .btn-mostrar-todo {
+            background: var(--base);
+            color: var(--mostrar-todo);
+            border-color: var(--mostrar-todo);
+            font-weight: 700;
+            border-width: 3px;
+        }
+        .btn-mostrar-todo.active {
+            background: var(--mostrar-todo);
+            color: var(--base);
+            border-color: var(--base);
+            border-width: 3px;
+        }
+        .btn-mostrar-todo.active::after {
+            color: var(--base);
+        }
+        
+        /* Contenedor de Mapa con Zoom/Pan */
+        .map-container {
+            position: fixed;
+            top: 75px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            background: white;
+            touch-action: none; /* Permite paneo en móvil */
+        }
+        
+        /* 🖐️ PANEO MEJORADO: Cursor de mano siempre visible */
+        .map-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-origin: center center;
+            transition: transform 0.2s ease-out;
+            cursor: grab; /* Mano abierta por defecto */
+        }
+        
+        /* Mano cerrada cuando arrastra */
+        .map-viewport.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+        
+        /* Capas del Mapa */
+        .layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .layer object,
+        .layer img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            display: block;
+            user-select: none;
+            -webkit-user-drag: none;
+            pointer-events: none; /* 🔧 Evita interferencia con el paneo */
+        }
+        
+        /* Capa base SIEMPRE visible */
+        .base { 
+            z-index: 1; 
+            opacity: 1 !important; 
+            pointer-events: auto !important;
+        }
+        
+        /* Capas overlay */
+        .overlay { z-index: 2; }
+        
+        /* Finanzas por encima de Talento */
+        #talento { z-index: 2; }
+        #flujo-finanzas { z-index: 3; }
+        
+        .layer.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Controles de Zoom */
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .zoom-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid var(--operacion);
+            color: var(--operacion);
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .zoom-btn:hover {
+            background: var(--operacion);
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Indicador de Zoom */
+        .zoom-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .zoom-indicator.show {
+            opacity: 1;
+        }
+        
+        /* Responsive para Móviles */
+        @media (max-width: 768px) {
+            .buttons-container {
+                padding: 10px 12px;
+                gap: 8px;
+            }
+            
+            .btn {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+            
+            .map-container {
+                top: 65px;
+            }
+            
+            .zoom-controls {
+                bottom: 15px;
+                right: 15px;
+            }
+            
+            .zoom-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+        }
+        
+        /* Landscape Móvil */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .buttons-container {
+                padding: 8px 10px;
+                gap: 6px;
+            }
+            
+            .btn {
+                padding: 6px 14px;
+                font-size: 11px;
+            }
+            
+            .map-container {
+                top: 55px;
+            }
+            
+            .zoom-controls {
+                bottom: 10px;
+                right: 10px;
+                gap: 6px;
+            }
+            
+            .zoom-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header con Scroll Horizontal -->
+    <div class="header">
+        <div class="scroll-indicator left" id="scroll-left">◀</div>
+        <div class="buttons-container" id="buttons-container">
+            <button class="btn btn-base" data-action="reset">
+                Limpiar Todo
+            </button>
+            <button class="btn btn-comite" data-layer="comite-directivo">
+                Comité Directivo
+            </button>
+            <button class="btn btn-planeacion" data-layer="planeacion">
+                Planeación
+            </button>
+            <button class="btn btn-abastecimiento" data-layer="abastecimiento">
+                Abastecimiento y Compras
+            </button>
+            <button class="btn btn-manufactura" data-layer="manufactura">
+                Manufactura, Mantenimiento y Calidad
+            </button>
+            <button class="btn btn-operacion" data-layer="operacion-bajo-techo">
+                Ops. Bajo Techo
+            </button>
+            <button class="btn btn-distribucion" data-layer="flujo-distribucion">
+                Distribución
+            </button>
+            <button class="btn btn-comercial" data-layer="comercial">
+                Comercial
+            </button>
+            <button class="btn btn-mercadeo" data-layer="mercadeo">
+                Mercadeo
+            </button>
+            <button class="btn btn-innovacion" data-layer="innovacion">
+                Innovación
+            </button>
+            <button class="btn btn-transformacion" data-layer="transformacion">
+                Transformación
+            </button>
+            <button class="btn btn-finanzas" data-layer="flujo-finanzas">
+                Finanzas
+            </button>
+            <button class="btn btn-talento" data-layer="talento">
+                Talento
+            </button>
+            <button class="btn btn-servicios" data-layer="servicios-corporativos">
+                Servicios Corporativos
+            </button>
+            <button class="btn btn-mostrar-todo" data-action="show-all">
+                Mostrar Todo
+            </button>
+        </div>
+        <div class="scroll-indicator right" id="scroll-right">▶</div>
+    </div>
+    
+    <!-- Contenedor de Mapa con Zoom/Pan -->
+    <div class="map-container">
+        <div class="map-viewport" id="viewport">
+            <!-- Capa Base: Logo y Título - SIEMPRE VISIBLE -->
+            <div class="layer base">
+                <object data="images/Logo y titutlo.svg" type="image/svg+xml" aria-label="Logo y Título Alpina"></object>
+            </div>
+            
+            <!-- Capas Overlay -->
+            <div id="comite-directivo" class="layer overlay">
+                <object data="images/Comite Directivo.svg" type="image/svg+xml" aria-label="Comité Directivo"></object>
+            </div>
+            
+            <div id="planeacion" class="layer overlay">
+                <object data="images/Planeación.svg" type="image/svg+xml" aria-label="Planeación"></object>
+            </div>
+            
+            <div id="abastecimiento" class="layer overlay">
+                <object data="images/Abastecimiento.svg" type="image/svg+xml" aria-label="Abastecimiento"></object>
+            </div>
+            
+            <div id="manufactura" class="layer overlay">
+                <object data="images/Manufactura.svg" type="image/svg+xml" aria-label="Manufactura"></object>
+            </div>
+            
+            <div id="operacion-bajo-techo" class="layer overlay">
+                <object data="images/Operación bajo techo.svg" type="image/svg+xml" aria-label="Operación Bajo Techo"></object>
+            </div>
+            
+            <div id="flujo-distribucion" class="layer overlay">
+                <object data="images/Flujo Distribución.svg" type="image/svg+xml" aria-label="Distribución"></object>
+            </div>
+            
+            <div id="comercial" class="layer overlay">
+                <object data="images/Comercial.svg" type="image/svg+xml" aria-label="Comercial"></object>
+            </div>
+            
+            <div id="mercadeo" class="layer overlay">
+                <object data="images/Mercadeo.svg" type="image/svg+xml" aria-label="Mercadeo"></object>
+            </div>
+            
+            <div id="innovacion" class="layer overlay">
+                <object data="images/Innovación.svg" type="image/svg+xml" aria-label="Innovación"></object>
+            </div>
+            
+            <div id="transformacion" class="layer overlay">
+                <object data="images/Transformación.svg" type="image/svg+xml" aria-label="Transformación"></object>
+            </div>
+            
+            <!-- Talento (z-index: 2) -->
+            <div id="talento" class="layer overlay">
+                <object data="images/Talento.svg" type="image/svg+xml" aria-label="Talento"></object>
+            </div>
+            
+            <!-- Finanzas encima de Talento (z-index: 3) -->
+            <div id="flujo-finanzas" class="layer overlay">
+                <object data="images/Finanzas.svg" type="image/svg+xml" aria-label="Finanzas"></object>
+            </div>
+            
+            <div id="servicios-corporativos" class="layer overlay">
+                <object data="images/Servicios Corporativos.svg" type="image/svg+xml" aria-label="Servicios Corporativos"></object>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Controles de Zoom -->
+    <div class="zoom-controls">
+        <button class="zoom-btn" id="zoom-in" title="Acercar">+</button>
+        <button class="zoom-btn" id="zoom-reset" title="Restablecer">⌂</button>
+        <button class="zoom-btn" id="zoom-out" title="Alejar">−</button>
+    </div>
+    
+    <!-- Indicador de Zoom -->
+    <div class="zoom-indicator" id="zoom-indicator"></div>
+    
+    <script>
+        class MapaAlpina {
+            constructor() {
+                this.viewport = document.getElementById('viewport');
+                this.zoomIndicator = document.getElementById('zoom-indicator');
+                this.buttonsContainer = document.getElementById('buttons-container');
+                this.scrollLeftBtn = document.getElementById('scroll-left');
+                this.scrollRightBtn = document.getElementById('scroll-right');
+                
+                // Estado del Zoom/Pan
+                this.scale = 1;
+                this.minScale = 0.5;
+                this.maxScale = 5;
+                this.translateX = 0;
+                this.translateY = 0;
+                
+                // Estado de arrastre
+                this.isDragging = false;
+                this.startX = 0;
+                this.startY = 0;
+                this.lastTranslateX = 0;
+                this.lastTranslateY = 0;
+                
+                // Touch handling
+                this.lastTouchDistance = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupButtons();
+                this.setupZoomControls();
+                this.setupPanControls();
+                this.setupTouchControls();
+                this.setupScrollButtons();
+                this.updateScrollIndicators();
+                this.showAllOnInit();
+            }
+            
+            showAllOnInit() {
+                const allLayers = document.querySelectorAll('.overlay');
+                const allButtons = document.querySelectorAll('.btn[data-layer]');
+                const showAllBtn = document.querySelector('.btn[data-action="show-all"]');
+                
+                allLayers.forEach(layer => layer.classList.add('active'));
+                allButtons.forEach(btn => btn.classList.add('active'));
+                showAllBtn.classList.add('active');
+            }
+            
+            setupButtons() {
+                document.querySelectorAll('.btn[data-layer]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const layerId = btn.dataset.layer;
+                        this.toggleLayer(layerId, btn);
+                    });
+                });
+                
+                document.querySelector('.btn[data-action="reset"]').addEventListener('click', () => {
+                    this.reset();
+                });
+                
+                document.querySelector('.btn[data-action="show-all"]').addEventListener('click', (e) => {
+                    this.showAll(e.currentTarget);
+                });
+            }
+            
+            toggleLayer(layerId, button) {
+                const layer = document.getElementById(layerId);
+                const isActive = layer.classList.contains('active');
+                
+                if (isActive) {
+                    layer.classList.remove('active');
+                    button.classList.remove('active');
+                } else {
+                    layer.classList.add('active');
+                    button.classList.add('active');
+                }
+            }
+            
+            showAll(button) {
+                const allLayers = document.querySelectorAll('.overlay');
+                const allButtons = document.querySelectorAll('.btn[data-layer]');
+                const isActive = button.classList.contains('active');
+                
+                if (isActive) {
+                    allLayers.forEach(layer => layer.classList.remove('active'));
+                    allButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.remove('active');
+                } else {
+                    allLayers.forEach(layer => layer.classList.add('active'));
+                    allButtons.forEach(btn => btn.classList.add('active'));
+                    button.classList.add('active');
+                }
+            }
+            
+            reset() {
+                document.querySelectorAll('.overlay').forEach(layer => {
+                    layer.classList.remove('active');
+                });
+                
+                document.querySelectorAll('.btn[data-layer], .btn[data-action="show-all"]').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                this.resetZoom();
+            }
+            
+            setupScrollButtons() {
+                this.scrollLeftBtn.addEventListener('click', () => {
+                    this.buttonsContainer.scrollBy({ left: -200, behavior: 'smooth' });
+                });
+                
+                this.scrollRightBtn.addEventListener('click', () => {
+                    this.buttonsContainer.scrollBy({ left: 200, behavior: 'smooth' });
+                });
+                
+                this.buttonsContainer.addEventListener('scroll', () => {
+                    this.updateScrollIndicators();
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.updateScrollIndicators();
+                });
+            }
+            
+            updateScrollIndicators() {
+                const container = this.buttonsContainer;
+                const scrollLeft = container.scrollLeft;
+                const scrollWidth = container.scrollWidth;
+                const clientWidth = container.clientWidth;
+                
+                if (scrollLeft > 10) {
+                    this.scrollLeftBtn.classList.add('show');
+                } else {
+                    this.scrollLeftBtn.classList.remove('show');
+                }
+                
+                if (scrollLeft < scrollWidth - clientWidth - 10) {
+                    this.scrollRightBtn.classList.add('show');
+                } else {
+                    this.scrollRightBtn.classList.remove('show');
+                }
+            }
+            
+            setupZoomControls() {
+                document.getElementById('zoom-in').addEventListener('click', () => this.zoomIn());
+                document.getElementById('zoom-out').addEventListener('click', () => this.zoomOut());
+                document.getElementById('zoom-reset').addEventListener('click', () => this.resetZoom());
+            }
+            
+            zoomIn() {
+                this.setZoom(this.scale + 0.3);
+            }
+            
+            zoomOut() {
+                this.setZoom(this.scale - 0.3);
+            }
+            
+            resetZoom() {
+                this.scale = 1;
+                this.translateX = 0;
+                this.translateY = 0;
+                this.lastTranslateX = 0;
+                this.lastTranslateY = 0;
+                this.updateTransform();
+                this.showZoomIndicator();
+            }
+            
+            setZoom(newScale) {
+                this.scale = Math.max(this.minScale, Math.min(this.maxScale, newScale));
+                this.constrainPan();
+                this.updateTransform();
+                this.showZoomIndicator();
+            }
+            
+            // 🖐️ PANEO PARA DESKTOP: Click y arrastrar
+            setupPanControls() {
+                this.viewport.addEventListener('mousedown', (e) => this.startDrag(e));
+                document.addEventListener('mousemove', (e) => this.drag(e));
+                document.addEventListener('mouseup', () => this.endDrag());
+                document.addEventListener('mouseleave', () => this.endDrag());
+                this.viewport.addEventListener('dragstart', (e) => e.preventDefault());
+            }
+            
+            // 📱 PANEO PARA MÓVIL: Touch y deslizar
+            setupTouchControls() {
+                this.viewport.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+                this.viewport.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+                this.viewport.addEventListener('touchend', () => this.handleTouchEnd());
+            }
+            
+            handleTouchStart(e) {
+                if (e.touches.length === 1) {
+                    // Un dedo: paneo
+                    this.startDrag(e.touches[0]);
+                } else if (e.touches.length === 2) {
+                    // Dos dedos: pinch-to-zoom
+                    e.preventDefault();
+                    this.lastTouchDistance = this.getTouchDistance(e.touches);
+                }
+            }
+            
+            handleTouchMove(e) {
+                if (e.touches.length === 1 && this.isDragging) {
+                    // Paneo con un dedo
+                    e.preventDefault();
+                    this.drag(e.touches[0]);
+                } else if (e.touches.length === 2) {
+                    // Zoom con dos dedos
+                    e.preventDefault();
+                    const currentDistance = this.getTouchDistance(e.touches);
+                    const delta = currentDistance - this.lastTouchDistance;
+                    this.setZoom(this.scale + delta * 0.01);
+                    this.lastTouchDistance = currentDistance;
+                }
+            }
+            
+            handleTouchEnd() {
+                this.endDrag();
+                this.lastTouchDistance = 0;
+            }
+            
+            getTouchDistance(touches) {
+                const dx = touches[0].clientX - touches[1].clientX;
+                const dy = touches[0].clientY - touches[1].clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            
+            startDrag(e) {
+                this.isDragging = true;
+                this.viewport.classList.add('dragging');
+                this.startX = e.clientX || e.pageX;
+                this.startY = e.clientY || e.pageY;
+            }
+            
+            drag(e) {
+                if (!this.isDragging) return;
+                
+                const currentX = e.clientX || e.pageX;
+                const currentY = e.clientY || e.pageY;
+                
+                this.translateX = this.lastTranslateX + (currentX - this.startX);
+                this.translateY = this.lastTranslateY + (currentY - this.startY);
+                
+                this.constrainPan();
+                this.updateTransform();
+            }
+            
+            endDrag() {
+                if (this.isDragging) {
+                    this.isDragging = false;
+                    this.viewport.classList.remove('dragging');
+                    this.lastTranslateX = this.translateX;
+                    this.lastTranslateY = this.translateY;
+                }
+            }
+            
+            constrainPan() {
+                const maxTranslate = (this.scale - 1) * 300;
+                this.translateX = Math.max(-maxTranslate, Math.min(maxTranslate, this.translateX));
+                this.translateY = Math.max(-maxTranslate, Math.min(maxTranslate, this.translateY));
+            }
+            
+            updateTransform() {
+                this.viewport.style.transform = 
+                    `scale(${this.scale}) translate(${this.translateX}px, ${this.translateY}px)`;
+            }
+            
+            showZoomIndicator() {
+                const percentage = Math.round(this.scale * 100);
+                this.zoomIndicator.textContent = `Zoom: ${percentage}%`;
+                this.zoomIndicator.classList.add('show');
+                
+                clearTimeout(this.indicatorTimeout);
+                this.indicatorTimeout = setTimeout(() => {
+                    this.zoomIndicator.classList.remove('show');
+                }, 1500);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            new MapaAlpina();
+        });
+    </script>
+</body>
+</html>
+
